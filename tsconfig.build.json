@@ -1,0 +1,15 @@
+{
+  // Build config for *distribution* only. Local dev still runs the TypeScript
+  // directly (`node src/index.ts`) — but Node refuses to type-strip files under
+  // node_modules, so an installed/published package must ship compiled JS.
+  // `rewriteRelativeImportExtensions` turns the `./x.ts` import specifiers into
+  // `./x.js` in the emitted output.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rewriteRelativeImportExtensions": true,
+    "declaration": false,
+    "sourceMap": false
+  }
+}
