@@ -14,8 +14,15 @@ does that.
 
 ## Running & dev loop
 
-- **Node ≥ 22.18 runs the TypeScript directly — there is no build step.** Just
-  `node src/index.ts`. Don't add a bundler/transpile step or a `dist/`.
+- **Local dev needs no build.** Node ≥ 22.18 runs the TypeScript directly:
+  `node src/index.ts`. Don't add a bundler or a dev-time transpile step.
+- **Distribution DOES need a build — don't remove it.** Node refuses to
+  type-strip files under `node_modules`
+  (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so an installed/published
+  package can't run the raw `.ts`. `npm run build` (`tsconfig.build.json`) emits
+  `dist/` with `./x.ts` import specifiers rewritten to `./x.js`; `bin` points at
+  `dist/index.js`; the `prepare` hook builds it automatically on install / git
+  install / publish. `dist/` is gitignored (built on demand, never committed).
 - Typecheck with `npx tsc --noEmit` (it's `noEmit`; tsc is only a checker here).
 - **Zero runtime dependencies.** The only deps are dev-only `@types/node` +
   `typescript`. Keep it that way — everything is Node stdlib + shelling out to
