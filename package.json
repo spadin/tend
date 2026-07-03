@@ -1,0 +1,22 @@
+{
+  "name": "tend",
+  "version": "0.1.0",
+  "description": "Lightweight status detector for AI coding agents running inside tmux. Reports blocked / working / idle per pane by scraping the terminal, plus git branch state.",
+  "type": "module",
+  "bin": {
+    "tend": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node src/index.ts",
+    "watch": "node src/index.ts watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.2"
+  },
+  "license": "MIT"
+}

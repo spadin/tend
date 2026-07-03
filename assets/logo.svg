@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 320" role="img" aria-labelledby="title desc">
+  <title id="title">tend logo</title>
+  <desc id="desc">The tend wordmark beside a terminal icon showing blocked, working, and idle agent panes.</desc>
+  <defs>
+    <linearGradient id="window" x1="76" y1="38" x2="284" y2="282" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#172033"/>
+      <stop offset="1" stop-color="#0B1020"/>
+    </linearGradient>
+    <filter id="shadow" x="42" y="26" width="288" height="292" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#020617" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="980" height="320" rx="48" fill="#F8FAFC"/>
+  <g filter="url(#shadow)">
+    <rect x="64" y="44" width="244" height="232" rx="32" fill="url(#window)"/>
+    <path d="M64 92h244" fill="none" stroke="#263249" stroke-width="12"/>
+    <circle cx="96" cy="68" r="7" fill="#EF4444"/>
+    <circle cx="120" cy="68" r="7" fill="#F59E0B"/>
+    <circle cx="144" cy="68" r="7" fill="#22C55E"/>
+    <rect x="94" y="118" width="184" height="38" rx="12" fill="#111827"/>
+    <rect x="94" y="174" width="184" height="38" rx="12" fill="#111827"/>
+    <rect x="94" y="230" width="184" height="28" rx="10" fill="#111827"/>
+    <circle cx="122" cy="137" r="10" fill="#EF4444"/>
+    <g fill="#F59E0B">
+      <circle cx="117" cy="187" r="3.3"/>
+      <circle cx="127" cy="187" r="3.3"/>
+      <circle cx="127" cy="194" r="3.3"/>
+      <circle cx="117" cy="201" r="3.3"/>
+      <circle cx="127" cy="201" r="3.3"/>
+    </g>
+    <circle cx="122" cy="244" r="8" fill="none" stroke="#22C55E" stroke-width="5"/>
+    <path d="M150 137h72M150 194h96M150 244h58" fill="none" stroke="#CBD5E1" stroke-linecap="round" stroke-width="9"/>
+  </g>
+  <g fill="#0F172A">
+    <path d="M434 231c-20.7 0-36.4-5.2-47.1-15.7-10.7-10.5-16-25.8-16-45.9v-59.8h-37.4V72.7h37.4V28h48.4v44.7h60v36.9h-60v56.9c0 8.7 2.1 15 6.4 19 4.3 4 11.1 6 20.6 6h30.5V231H434z"/>
+    <path d="M555.2 234.8c-19 0-35.7-3.5-50.2-10.5-14.5-7.2-25.8-17.3-33.9-30.3-8.1-13.2-12.1-28.4-12.1-45.7 0-17.6 4-33 12.1-46.1 8.3-13.2 19.5-23.5 33.6-30.8 14.3-7.4 30.4-11.1 48.4-11.1 17.2 0 32.5 3.5 45.8 10.5 13.3 6.8 23.7 16.6 31.2 29.3 7.5 12.7 11.2 27.6 11.2 44.7 0 3-.1 6.3-.4 9.8-.1 3.3-.5 6.4-1.1 9.3H506.6c1.7 11.1 6.9 19.5 15.7 25.2 8.8 5.7 19.9 8.6 33.3 8.6 10.1 0 18.6-1.5 25.6-4.4 7.2-3 12.7-7.2 16.5-12.7h39.5c-5.5 16.7-15.6 29.9-30.5 39.6-14.6 9.7-31.8 14.6-51.5 14.6zm-48.1-101.6h87.8c-1.5-10.3-6-18.4-13.5-24.3-7.4-5.9-16.9-8.9-28.7-8.9-11.7 0-21.7 2.9-29.8 8.6-8 5.7-13.3 13.9-15.8 24.6z"/>
+    <path d="M645.8 231V64h43.6l2.8 24.3c5.7-8.9 13.8-15.8 24.2-20.7 10.6-4.9 22.6-7.3 36.1-7.3 20.9 0 37.1 6.3 48.8 18.8 11.8 12.5 17.8 30.3 17.8 53.4V231h-48.4v-91.7c0-12.3-2.9-21.6-8.6-27.7-5.7-6.1-14.3-9.2-25.6-9.2-8.3 0-15.6 1.8-21.9 5.4-6.1 3.6-11.1 8.8-14.7 15.6-3.6 6.6-5.4 14.7-5.4 24.2V231h-48.7z"/>
+    <path d="M896.9 234.8c-15.8 0-30-3.6-42.6-10.8-12.4-7.4-22.2-17.6-29.4-30.6-7.2-13.2-10.8-28.4-10.8-45.7 0-17.2 3.6-32.2 10.8-45.1 7.2-13 17-23.3 29.4-30.6 12.6-7.4 26.8-11.1 42.6-11.1 13.1 0 24.5 2.4 34.3 7.3 9.8 4.7 17.3 11.2 22.6 19.5V0H902v231h-43.3l-3.2-24c-5.5 8.3-13.2 15-23.1 20.1-9.7 5.1-21.5 7.7-35.5 7.7zm10.8-40.4c13.5 0 24.6-4.4 33.3-13.1 8.7-8.9 13.1-20.1 13.1-33.8 0-13.9-4.4-25.2-13.1-33.8-8.7-8.7-19.8-13.1-33.3-13.1-13.3 0-24.3 4.4-32.9 13.1-8.5 8.7-12.8 19.9-12.8 33.8 0 13.7 4.3 24.9 12.8 33.8 8.6 8.7 19.6 13.1 32.9 13.1z"/>
+  </g>
+  <path d="M374 262h524" fill="none" stroke="#CBD5E1" stroke-linecap="round" stroke-width="10"/>
+</svg>
