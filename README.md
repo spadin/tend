@@ -25,11 +25,21 @@ without color: **`●` red = blocked**, **`⠧` yellow (animated spinner) = work
 
 ## Install
 
-Requires **Node ≥ 22.18** (runs TypeScript natively — no build step) and tmux.
+`tend` needs **tmux** and **Node ≥ 20**. Install it from npm:
 
 ```sh
+npm install -g @sandropadin/tend    # global — puts `tend` on your PATH
+# or run it without installing:
+npx @sandropadin/tend
+```
+
+**From source** (to hack on it) — Node ≥ 22.18 runs the TypeScript directly, no
+build step:
+
+```sh
+git clone https://github.com/spadin/tend.git && cd tend
 npm install          # dev-only deps (types); the tool itself is stdlib-only
-npm link             # optional: puts `tend` on your PATH
+node src/index.ts    # run it, or `npm link` to put `tend` on your PATH
 ```
 
 ## Usage

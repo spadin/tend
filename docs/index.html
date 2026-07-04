@@ -337,15 +337,14 @@ footer a{color:var(--ink-soft)}
     <div class="wrap">
       <p class="eyebrow">install</p>
       <h2>Two dependencies: Node and tmux. Nothing else.</h2>
-      <div class="prose"><p>The tool itself is Node stdlib plus shelling out to <code>tmux</code> and <code>git</code> — zero runtime dependencies. Install straight from GitHub (the package builds itself on install):</p></div>
-      <pre class="shell"><span class="p">$</span> npm install -g github:spadin/tend
+      <div class="prose"><p>The tool itself is Node stdlib plus shelling out to <code>tmux</code> and <code>git</code> — zero runtime dependencies. Install it globally from npm:</p></div>
+      <pre class="shell"><span class="p">$</span> npm install -g @sandropadin/tend
 <span class="p">$</span> tend</pre>
-      <div class="prose"><p>Or clone it — Node ≥ 22.18 runs the TypeScript directly, no build step:</p></div>
+      <div class="prose"><p>Or run it without installing — <code>npx @sandropadin/tend</code>. To hack on it, clone the repo — Node ≥ 22.18 runs the TypeScript directly, no build step:</p></div>
       <pre class="shell"><span class="p">$</span> git clone https://github.com/spadin/tend.git &amp;&amp; cd tend
 <span class="p">$</span> npm install   <span class="c"># dev-only type stubs</span>
-<span class="p">$</span> npm link      <span class="c"># optional: puts `tend` on your PATH</span>
-<span class="p">$</span> node src/index.ts</pre>
-      <div class="prose"><p><em>Note: the <code>tend</code> name on the npm registry is a different, unrelated package — install from GitHub as above.</em></p></div>
+<span class="p">$</span> node src/index.ts   <span class="c"># or `npm link` to put `tend` on your PATH</span></pre>
+      <div class="prose"><p><em>Note: the unscoped <code>tend</code> on npm is a different, unrelated package — install <code>@sandropadin/tend</code> as above.</em></p></div>
     </div>
   </section>
 
