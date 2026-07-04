@@ -79,17 +79,35 @@ const codex: Manifest = {
   match: ["codex"],
   signature: ["OpenAI Codex", "Codex CLI", "codex>"],
   rules: [
+    // Blocked = a *live* prompt Codex is waiting on — a command-approval dialog
+    // or a selectable question (request_user_input). Both render as a numbered
+    // list with the live selection cursor `›` (U+203A, Codex's analogue of
+    // Claude's `❯`) on one choice. Key on that cursor row, NOT footer text:
+    // Codex keeps "esc to interrupt" in the prompt footer even while blocked
+    // (e.g. "enter to submit answer | esc to interrupt"), so the interrupt hint
+    // can't distinguish blocked from working — only the live cursor can. Like
+    // Claude's ❯ cursor, it vanishes the instant you answer, so a prompt left in
+    // scrollback stops counting as blocked.
     {
-      id: "approval_prompt",
+      id: "selection_prompt",
       state: "blocked",
       priority: 900,
       region: { bottom_non_empty_lines: 20 },
+      regex: "^\\s*›\\s+\\d+\\.\\s", // e.g. "› 1. Yes"
+    },
+    // Belt-and-suspenders: explicit approval/question wording, for a prompt
+    // whose numbered cursor row isn't in the captured window (long command
+    // preview pushing it out of view).
+    {
+      id: "approval_prompt",
+      state: "blocked",
+      priority: 890,
+      region: { bottom_non_empty_lines: 20 },
       anyContains: [
         "Allow command",
-        "Approve this command",
-        "Run this command?",
         "wants to run",
         "Do you want to apply",
+        "enter to submit answer", // selectable-question footer
       ],
     },
     {
@@ -104,8 +122,8 @@ const codex: Manifest = {
       state: "idle",
       priority: 100,
       region: "prompt_box_body",
-      regex: "^\\s*[>❯▌]",
-      not: ["Esc to interrupt", "Allow command"],
+      regex: "^\\s*[>›❯▌]", // Codex's input marker is `›` (U+203A)
+      not: ["Esc to interrupt", "Allow command", "enter to submit answer"],
     },
   ],
 };
