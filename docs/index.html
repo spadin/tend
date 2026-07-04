@@ -447,12 +447,12 @@ footer a{color:var(--ink-soft)}
     <div class="wrap">
       <p class="eyebrow">integration</p>
       <h2>It composes with tmux, like everything should.</h2>
-      <div class="prose"><p>Put a summary in the status bar via <code>tend --json</code>, or bind a key to a popup dashboard:</p></div>
+      <div class="prose"><p>Put a summary in the status bar via <code>tend --json</code>, or bind a key to a popup dashboard. The <code>--popup</code> flag makes the dashboard exit once you pick an agent, so the popup closes and drops you onto that pane:</p></div>
       <pre class="shell"><span class="c"># count blocked agents in the status bar</span>
 set -g status-right "#(tend --json | jq -r '[.[] | select(.state==\"blocked\")] | length') blocked"
 
-<span class="c"># pop up the dashboard on prefix-g</span>
-bind-key g display-popup -E "tend; read"</pre>
+<span class="c"># pop up the dashboard on prefix-g, jump, and it closes behind you</span>
+bind-key g display-popup -E "tend --popup"</pre>
     </div>
   </section>
 </main>

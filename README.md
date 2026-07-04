@@ -131,10 +131,11 @@ Enter sends the selected agent to B.
 set -g status-right "#(cd #{pane_current_path} && tend --json | jq -r '...')"
 ```
 
-Or bind a key to a quick popup:
+Or bind a key to a quick popup dashboard — `--popup` makes it exit after you
+pick an agent, so the popup closes and drops you onto that pane:
 
 ```tmux
-bind-key g display-popup -E "tend; read"
+bind-key g display-popup -E "tend --popup"
 ```
 
 ## How it works

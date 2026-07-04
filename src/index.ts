@@ -41,6 +41,7 @@ interface Options {
   target?: string; // pane id for jump/debug
   targetClient?: string; // --to <tty>: open jumps in this client (window)
   other: boolean; // --other: open jumps in the one other attached client
+  popup: boolean; // --popup: dashboard exits after a jump (for tmux display-popup)
 }
 
 function parseArgs(argv: string[]): Options {
@@ -53,6 +54,7 @@ function parseArgs(argv: string[]): Options {
     interval: 800,
     onceDelay: 350,
     other: false,
+    popup: false,
   };
   const args = [...argv];
   while (args.length) {
@@ -78,6 +80,9 @@ function parseArgs(argv: string[]): Options {
         break;
       case "--other":
         opts.other = true;
+        break;
+      case "--popup":
+        opts.popup = true;
         break;
       case "jump":
         opts.mode = "jump";
@@ -139,6 +144,7 @@ function printHelp(): void {
       "  --other            open jumps in the one other attached client",
       "",
       "Options:",
+      "  --popup            exit the dashboard after a jump — for tmux display-popup",
       "  --interval <ms>    dashboard refresh interval (default 800)",
       "  --once-delay <ms>  activity sampling window for --once (default 350)",
       "",
@@ -313,7 +319,7 @@ async function main(): Promise<void> {
         // Optional preset target window from --to/--other; `o` cycles it live.
         const initialTarget =
           opts.targetClient ?? (opts.other ? await resolveTargetClient(opts) : null);
-        await runPicker(scanOpts(opts), opts.interval, initialTarget ?? undefined);
+        await runPicker(scanOpts(opts), opts.interval, initialTarget ?? undefined, opts.popup);
       } else if (opts.readonly) {
         await runWatch(opts); // display-only repaint (explicit)
       } else if (opts.mode === "watch") {

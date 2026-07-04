@@ -31,6 +31,7 @@ export async function runPicker(
   opts: ScanOptions,
   intervalMs: number,
   initialTarget?: string,
+  exitOnJump = false, // --popup: end the session after a jump so the popup closes
 ): Promise<void> {
   let statuses: AgentStatus[] = [];
   let memory = new Map<string, PaneMemory>();
@@ -145,6 +146,14 @@ export async function runPicker(
     out.write(SHOW_CURSOR + ALT_OFF);
   };
 
+  // Tear down and exit after a jump that has already completed (the switch-client
+  // paths). Used in --popup mode so `display-popup -E` closes onto the agent.
+  const finishAfterJump = () => {
+    done = true;
+    cleanup();
+    process.exit(0);
+  };
+
   const jump = async () => {
     const target = selectable()[currentIndex()];
     if (!target) return;
@@ -153,6 +162,7 @@ export async function runPicker(
     if (targetTty) {
       try {
         await jumpToPane(target.pane, { client: targetTty });
+        if (exitOnJump) finishAfterJump();
         statusMsg = `→ sent ${target.agent} (${target.pane.id}) to ${shortTty(targetTty)}`;
       } catch {
         statusMsg = `⚠ ${shortTty(targetTty)} unavailable`;
@@ -161,9 +171,12 @@ export async function runPicker(
       return;
     }
 
-    // Targeting this window, inside tmux: switch our client but keep running.
+    // Targeting this window, inside tmux: switch our client. Normally we keep the
+    // dashboard alive in its own pane; in --popup mode we exit so the popup closes
+    // onto the agent instead of lingering on top of it.
     if (insideTmux()) {
       await jumpToPane(target.pane);
+      if (exitOnJump) finishAfterJump();
       statusMsg = `→ jumped to ${target.agent} in ${target.pane.sessionName} (${target.pane.id})`;
       render();
       return;
