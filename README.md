@@ -53,6 +53,7 @@ tend jump %3         # jump straight to a pane id
 tend jump %3 --to T  # open pane %3 in another window (client tty T)
 tend clients         # list attached tmux clients (terminal windows)
 tend --json          # machine-readable snapshot (for status bars, scripts)
+tend --blocked       # print the count of blocked agents and exit
 tend --current       # limit to the current session only
 tend --readonly      # dashboard without selection (display-only pane)
 tend --debug %3      # dump what each region extractor sees, for rule tuning
@@ -126,6 +127,14 @@ scratch tmux session in window B. Watch A, press `o` once to aim at B, and every
 Enter sends the selected agent to B.
 
 ### tmux status-bar integration
+
+```tmux
+set -g status-right "#(tend --blocked) blocked"
+```
+
+`--blocked` just prints the count and exits — pair it with a shell
+conditional in your status line if you only want it to show up when nonzero.
+For richer output (per-agent state, git info), use `--json`:
 
 ```tmux
 set -g status-right "#(cd #{pane_current_path} && tend --json | jq -r '...')"

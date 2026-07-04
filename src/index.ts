@@ -6,6 +6,7 @@
 //   tend pick            interactive picker — select an agent and jump to it
 //   tend jump <pane>     jump straight to a pane id (e.g. jump %3)
 //   tend --json          machine-readable output (once)
+//   tend --blocked       print the count of blocked agents and exit
 //   tend --current       limit to the current session (default: all sessions)
 //   tend --debug <pane>  dump each region's extracted text, for rule tuning
 //
@@ -31,7 +32,7 @@ import {
 interface Options {
   // "default" = dashboard in a terminal, snapshot when piped. "watch" = the
   // dashboard, explicitly requested (repaints even when piped).
-  mode: "default" | "watch" | "jump" | "debug" | "clients";
+  mode: "default" | "watch" | "jump" | "debug" | "clients" | "blocked";
   json: boolean;
   all: boolean;
   once: boolean; // force a one-off snapshot even on an interactive terminal
@@ -95,6 +96,9 @@ function parseArgs(argv: string[]): Options {
       case "--json":
         opts.json = true;
         break;
+      case "--blocked":
+        opts.mode = "blocked";
+        break;
       case "--current":
       case "-s":
         opts.all = false;
@@ -133,6 +137,7 @@ function printHelp(): void {
       "  tend jump <pane>     jump to a pane id (e.g. jump %3)",
       "  tend clients         list attached tmux clients (terminal windows)",
       "  tend --json          machine-readable snapshot",
+      "  tend --blocked       print the count of blocked agents and exit",
       "  tend --current       limit to the current session",
       "  tend --readonly      dashboard without selection (display-only pane)",
       "  tend --debug <pane>  dump extracted regions for a pane (rule tuning)",
@@ -161,6 +166,12 @@ async function runOnce(opts: Options): Promise<void> {
   } else {
     process.stdout.write(renderGrouped(statuses) + "\n\n" + summaryLine(statuses) + "\n");
   }
+}
+
+async function runBlocked(opts: Options): Promise<void> {
+  const statuses = await scanOnce(scanOpts(opts), opts.onceDelay);
+  const count = statuses.filter((s) => s.state === "blocked").length;
+  process.stdout.write(`${count}\n`);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -337,6 +348,9 @@ async function main(): Promise<void> {
       break;
     case "debug":
       await runDebug(opts);
+      break;
+    case "blocked":
+      await runBlocked(opts);
       break;
   }
 }
