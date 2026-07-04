@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tend — status of AI coding agents in tmux</title>
+<meta name="description" content="tend scans your tmux panes, figures out which ones are AI agents (Claude Code, Codex, …), and reports whether each is blocked, working, or idle — with a live dashboard that jumps you to any pane.">
+<meta property="og:title" content="tend — status of AI coding agents in tmux">
+<meta property="og:description" content="Blocked / working / idle for every AI agent across every tmux session, plus git branch state. A live dashboard that doubles as a navigator. Zero runtime dependencies.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sa.ndropad.in/tend/">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<style>
+:root{
+  --page:#F8FAFC;
+  --ink:#0F172A;
+  --ink-soft:#334155;
+  --muted:#64748B;
+  --hairline:#CBD5E1;
+  --term-hi:#172033;
+  --term-lo:#0B1020;
+  --term-chrome:#263249;
+  --term-text:#CBD5E1;
+  --term-dim:#5B6B84;
+  --blocked:#EF4444;
+  --working:#F59E0B;
+  --idle:#22C55E;
+  --unknown:#94A3B8;
+  --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  background:var(--page);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:17px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:var(--hairline)}
+a:hover{text-decoration-color:var(--ink)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:2px}
+.wrap{max-width:880px;margin:0 auto;padding:0 24px}
+
+/* ---------- header ---------- */
+header.site{padding:28px 0 0}
+.site-row{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+.brand{font-family:var(--mono);font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;text-decoration:none}
+.brand .tick{color:var(--working)}
+nav.top{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:.9rem;font-family:var(--mono);justify-content:flex-end}
+nav.top a{text-decoration:none;color:var(--muted);white-space:nowrap}
+nav.top a:hover{color:var(--ink)}
+@media(max-width:560px){
+  .site-row{flex-direction:column;align-items:flex-start;gap:10px}
+  nav.top{justify-content:flex-start;font-size:.84rem;gap:6px 16px}
+}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 24px}
+.hero h1{
+  font-family:var(--mono);
+  font-size:clamp(2.6rem,7vw,4.2rem);
+  font-weight:700;
+  letter-spacing:-0.045em;
+  line-height:1.05;
+}
+.hero h1 .cursor{color:var(--working);animation:blink 1.2s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion: reduce){.hero h1 .cursor{animation:none}}
+.hero .tagline{
+  margin-top:18px;
+  font-size:clamp(1.05rem,2.4vw,1.3rem);
+  color:var(--ink-soft);
+  max-width:38em;
+}
+.hero .tagline strong{color:var(--ink)}
+.hero .sub{margin-top:10px;color:var(--muted);max-width:44em;font-size:.98rem}
+.hero-ctas{margin-top:26px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:var(--mono);font-size:.9rem}
+.cta{
+  display:inline-block;padding:10px 18px;border-radius:10px;text-decoration:none;
+  border:1.5px solid var(--ink);
+}
+.cta.primary{background:var(--ink);color:var(--page)}
+.cta.primary:hover{background:#1E293B}
+.cta.ghost:hover{background:#EEF2F7}
+.hero-install{
+  margin-top:14px;font-family:var(--mono);font-size:.86rem;color:var(--muted);
+}
+.hero-install code{color:var(--ink);background:#EEF2F7;padding:3px 8px;border-radius:6px}
+
+/* ---------- terminal chrome (shared) ---------- */
+.term{
+  background:linear-gradient(135deg,var(--term-hi),var(--term-lo));
+  border-radius:16px;
+  box-shadow:0 24px 48px -20px rgba(2,6,23,.35),0 4px 12px rgba(2,6,23,.12);
+  overflow:hidden;
+  color:var(--term-text);
+  font-family:var(--mono);
+  font-size:.85rem;
+  line-height:1.7;
+}
+.term-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:11px 16px;
+  border-bottom:2px solid var(--term-chrome);
+}
+.term-bar .dot{width:11px;height:11px;border-radius:50%}
+.term-bar .dot.r{background:var(--blocked)}
+.term-bar .dot.y{background:var(--working)}
+.term-bar .dot.g{background:var(--idle)}
+.term-bar .title{margin-left:8px;color:var(--term-dim);font-size:.78rem}
+.term-body{padding:18px 20px 20px;overflow-x:auto}
+.term-body pre{font-family:inherit;font-size:inherit;line-height:inherit;white-space:pre}
+.t-dim{color:var(--term-dim)}
+.t-sess{color:#8FA3C4;font-weight:700}
+.t-red{color:var(--blocked)}
+.t-yel{color:var(--working)}
+.t-grn{color:var(--idle)}
+.t-grey{color:var(--unknown)}
+.t-cur{color:#E2E8F0;font-weight:700}
+.t-branch{color:#7DD3FC}
+.t-dirty{color:var(--working)}
+.row-sel{background:rgba(148,163,184,.12);display:inline-block;width:100%;border-radius:4px}
+
+/* hero demo */
+.demo{margin-top:44px}
+.demo-caption{margin-top:12px;font-size:.85rem;color:var(--muted);text-align:center}
+.demo-caption code{font-family:var(--mono);background:#EEF2F7;padding:1px 6px;border-radius:5px;font-size:.82rem}
+
+/* ---------- sections ---------- */
+section{padding:56px 0 8px}
+.eyebrow{
+  font-family:var(--mono);font-size:.8rem;color:var(--muted);
+  letter-spacing:.02em;margin-bottom:10px;
+}
+.eyebrow .g{font-size:.95em}
+h2{font-size:clamp(1.5rem,3.4vw,1.9rem);letter-spacing:-0.025em;line-height:1.25;font-weight:700}
+section > .wrap > p, section .prose p{margin-top:14px;color:var(--ink-soft);max-width:46em}
+section .prose p strong{color:var(--ink)}
+code.inline, p code, li code, td code{
+  font-family:var(--mono);font-size:.86em;background:#EEF2F7;
+  padding:2px 6px;border-radius:5px;color:var(--ink);white-space:nowrap;
+}
+code.wrapok{white-space:normal}
+
+/* states legend */
+.states{
+  margin-top:28px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+}
+.state-card{
+  border:1px solid var(--hairline);border-radius:14px;padding:20px 20px 18px;
+  background:#fff;
+}
+.state-card .glyph{font-family:var(--mono);font-size:1.9rem;line-height:1;display:block}
+.state-card.blocked .glyph{color:var(--blocked)}
+.state-card.working .glyph{color:var(--working)}
+.state-card.idle .glyph{color:var(--idle)}
+.state-card h3{margin-top:12px;font-size:1.02rem;font-weight:700}
+.state-card p{margin-top:6px;font-size:.9rem;color:var(--muted);line-height:1.55}
+.state-note{margin-top:14px;font-size:.88rem;color:var(--muted)}
+.state-note .g{font-family:var(--mono);color:var(--unknown)}
+@media(max-width:680px){.states{grid-template-columns:1fr}}
+
+/* is / isn't */
+.fit{margin-top:26px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fit-col{border:1px solid var(--hairline);border-radius:14px;background:#fff;padding:22px 24px}
+.fit-col h3{font-family:var(--mono);font-size:.85rem;font-weight:700;letter-spacing:.02em}
+.fit-col.yes h3{color:#15803D}
+.fit-col.no h3{color:var(--muted)}
+.fit-col ul{list-style:none;margin-top:12px}
+.fit-col li{padding:7px 0;font-size:.93rem;color:var(--ink-soft);display:flex;gap:10px;line-height:1.5}
+.fit-col li::before{font-family:var(--mono);flex:none}
+.fit-col.yes li::before{content:"○";color:var(--idle)}
+.fit-col.no li::before{content:"—";color:var(--hairline)}
+@media(max-width:680px){.fit{grid-template-columns:1fr}}
+
+/* install / code blocks (light) */
+pre.shell{
+  margin-top:20px;
+  background:linear-gradient(135deg,var(--term-hi),var(--term-lo));
+  color:var(--term-text);
+  font-family:var(--mono);font-size:.85rem;line-height:1.8;
+  padding:18px 22px;border-radius:12px;overflow-x:auto;
+}
+pre.shell .c{color:var(--term-dim)}
+pre.shell .p{color:var(--working)}
+
+/* usage table */
+.cmds{margin-top:24px;width:100%;border-collapse:collapse;font-size:.92rem}
+.cmds td{padding:10px 14px 10px 0;border-top:1px solid #E2E8F0;vertical-align:top}
+.cmds tr:first-child td{border-top:none}
+.cmds td:first-child{font-family:var(--mono);font-size:.84rem;white-space:nowrap;color:var(--ink);padding-right:28px}
+.cmds td:last-child{color:var(--ink-soft)}
+.table-scroll{overflow-x:auto}
+
+/* keys strip */
+.keys{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px}
+.key{
+  font-family:var(--mono);font-size:.82rem;color:var(--ink-soft);
+  border:1px solid var(--hairline);border-radius:9px;padding:7px 12px;background:#fff;
+}
+.key b{color:var(--ink);font-weight:700}
+
+/* two-window figure */
+.fig2{margin-top:30px;display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center}
+.fig2 .term{font-size:.72rem;box-shadow:0 14px 30px -16px rgba(2,6,23,.3)}
+.fig2 .term-body{padding:14px 16px}
+.fig2 .jump{
+  font-family:var(--mono);color:var(--muted);font-size:.8rem;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.fig2 .jump .arrow{font-size:1.5rem;color:var(--working)}
+.fig2-caption{margin-top:12px;font-size:.85rem;color:var(--muted);text-align:center}
+@media(max-width:760px){
+  .fig2{grid-template-columns:1fr}
+  .fig2 .jump .arrow{transform:rotate(90deg)}
+}
+
+/* arbitration pipeline */
+.pipeline{margin-top:28px;display:flex;flex-direction:column;gap:0}
+.pipe-step{
+  display:grid;grid-template-columns:34px 1fr;gap:16px;align-items:start;
+  padding:16px 0;
+}
+.pipe-step + .pipe-step{border-top:1px dashed var(--hairline)}
+.pipe-step .g{font-family:var(--mono);font-size:1.25rem;line-height:1.3;text-align:center}
+.pipe-step h4{font-size:.98rem;font-weight:700}
+.pipe-step h4 code{font-size:.82em}
+.pipe-step p{margin-top:4px;font-size:.9rem;color:var(--muted);max-width:44em;line-height:1.55}
+.pipe-label{font-family:var(--mono);font-size:.74rem;color:var(--muted);letter-spacing:.04em;margin-top:2px}
+
+/* footer */
+footer{margin-top:80px;border-top:1px solid var(--hairline);padding:36px 0 56px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:baseline}
+footer p{font-size:.88rem;color:var(--muted)}
+footer .glyphs{font-family:var(--mono);letter-spacing:.35em}
+footer a{color:var(--ink-soft)}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap site-row">
+    <a class="brand" href="#">tend<span class="tick">_</span></a>
+    <nav class="top">
+      <a href="#install">install</a>
+      <a href="#dashboard">dashboard</a>
+      <a href="#how">how it works</a>
+      <a href="https://github.com/spadin/tend">github</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <h1>tend<span class="cursor">_</span></h1>
+      <p class="tagline">Status of the AI coding agents running inside your <strong>tmux</strong> session — at a glance.</p>
+      <p class="sub">tend scans your tmux panes, figures out which ones are AI agents (Claude Code, Codex, …), and reports whether each is <b>blocked</b> waiting on you, <b>working</b>, or <b>idle</b> — plus the git branch state of each pane's directory. One question, answered continuously: <em>what are my agents doing right now?</em></p>
+      <div class="hero-ctas">
+        <a class="cta primary" href="#install">install</a>
+        <a class="cta ghost" href="https://github.com/spadin/tend">source on GitHub</a>
+      </div>
+      <p class="hero-install">Node ≥ 22.18 · tmux · zero runtime dependencies · MIT</p>
+    </div>
+
+    <div class="wrap demo">
+      <div class="term" id="demo-term" aria-label="Animated recreation of the tend dashboard">
+        <div class="term-bar" aria-hidden="true">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">tmux · tend</span>
+        </div>
+        <div class="term-body"><pre id="demo" aria-live="off"></pre></div>
+      </div>
+      <p class="demo-caption">A faithful re-animation of the dashboard — the real thing is <code>tend</code> in any terminal where tmux is running.</p>
+    </div>
+  </div>
+
+  <section id="states">
+    <div class="wrap">
+      <p class="eyebrow"><span class="g" style="color:var(--blocked)">●</span> <span class="g" style="color:var(--working)">⠧</span> <span class="g" style="color:var(--idle)">○</span> &nbsp;the three states</p>
+      <h2>A glyph carries each state — shape <em>and</em> color, so it reads even without color.</h2>
+      <div class="states">
+        <div class="state-card blocked">
+          <span class="glyph">●</span>
+          <h3>blocked</h3>
+          <p>The agent is waiting on <em>you</em> — a permission prompt or approval UI is on screen. Deliberately strict: only a positive match of a known approval UI, so you don't get false "needs you" alarms.</p>
+        </div>
+        <div class="state-card working">
+          <span class="glyph">⠧</span>
+          <h3>working</h3>
+          <p>The pane's content changed since the last look. An animated spinner in the dashboard, so a busy board visibly ticks.</p>
+        </div>
+        <div class="state-card idle">
+          <span class="glyph">○</span>
+          <h3>idle</h3>
+          <p>Nothing happening, nothing needed. Debounced — it must persist across two scans, so a single quiet frame mid-task doesn't flap the status.</p>
+        </div>
+      </div>
+      <p class="state-note"><span class="g">◌</span>&nbsp; grey means unknown — a pane tend recognizes as an agent but can't read a state from yet.</p>
+    </div>
+  </section>
+
+  <section id="fit">
+    <div class="wrap">
+      <p class="eyebrow">scope</p>
+      <h2>Small and focused, on purpose.</h2>
+      <div class="prose"><p>tend does one job. If you're deciding whether it's useful to you, this is the honest split:</p></div>
+      <div class="fit">
+        <div class="fit-col yes">
+          <h3>tend is for you if…</h3>
+          <ul>
+            <li>You run several AI coding agents in tmux panes and keep missing the moment one stops to ask permission.</li>
+            <li>You want a single surface showing every agent across every session — and a way to jump straight to any of them.</li>
+            <li>You want the status in your tmux status bar or a script (<code>tend --json</code>).</li>
+            <li>You care about git state per pane — branch, dirty, ahead/behind — at the same glance.</li>
+          </ul>
+        </div>
+        <div class="fit-col no">
+          <h3>it deliberately does not…</h3>
+          <ul>
+            <li>Multiplex, split panes, manage windows, or persist sessions — tmux already does all of that.</li>
+            <li>Wrap or launch your agents. They run exactly as they do now; tend only observes.</li>
+            <li>Hook into agent APIs. Detection reads the rendered screen, so it works with any TUI agent — and needs occasional rule tuning as TUIs drift.</li>
+            <li>Work outside tmux. No tmux server, nothing to scan.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <p class="eyebrow">install</p>
+      <h2>Two dependencies: Node and tmux. Nothing else.</h2>
+      <div class="prose"><p>The tool itself is Node stdlib plus shelling out to <code>tmux</code> and <code>git</code> — zero runtime dependencies. Install straight from GitHub (the package builds itself on install):</p></div>
+      <pre class="shell"><span class="p">$</span> npm install -g github:spadin/tend
+<span class="p">$</span> tend</pre>
+      <div class="prose"><p>Or clone it — Node ≥ 22.18 runs the TypeScript directly, no build step:</p></div>
+      <pre class="shell"><span class="p">$</span> git clone https://github.com/spadin/tend.git &amp;&amp; cd tend
+<span class="p">$</span> npm install   <span class="c"># dev-only type stubs</span>
+<span class="p">$</span> npm link      <span class="c"># optional: puts `tend` on your PATH</span>
+<span class="p">$</span> node src/index.ts</pre>
+      <div class="prose"><p><em>Note: the <code>tend</code> name on the npm registry is a different, unrelated package — install from GitHub as above.</em></p></div>
+    </div>
+  </section>
+
+  <section id="usage">
+    <div class="wrap">
+      <p class="eyebrow">usage</p>
+      <h2>One command, a few modes.</h2>
+      <div class="prose"><p>By default tend scans <strong>every tmux session</strong> and groups agents by session. Bare <code>tend</code> opens the live dashboard in a terminal, but falls back to a one-off snapshot when piped or redirected — so <code>tend | grep</code> and <code>tend &gt; file</code> just work.</p></div>
+      <div class="table-scroll"><table class="cmds">
+        <tr><td>tend</td><td>live, selectable dashboard (default in a terminal)</td></tr>
+        <tr><td>tend --once</td><td>print a grouped snapshot and exit</td></tr>
+        <tr><td>tend --json</td><td>machine-readable snapshot, for status bars and scripts</td></tr>
+        <tr><td>tend jump %3</td><td>jump straight to a pane id — handy on a tmux key binding</td></tr>
+        <tr><td>tend jump %3 --to T</td><td>open pane %3 in another terminal window (client tty T)</td></tr>
+        <tr><td>tend clients</td><td>list attached tmux clients (terminal windows)</td></tr>
+        <tr><td>tend --current</td><td>limit to the current session only</td></tr>
+        <tr><td>tend --readonly</td><td>dashboard without selection — a display-only status pane</td></tr>
+        <tr><td>tend --debug %3</td><td>dump what each detection region sees, for rule tuning</td></tr>
+      </table></div>
+    </div>
+  </section>
+
+  <section id="dashboard">
+    <div class="wrap">
+      <p class="eyebrow">the dashboard</p>
+      <h2>A monitor that doubles as a navigator.</h2>
+      <div class="prose">
+        <p>The dashboard is a live, grouped list of every agent — and it's selectable. Move the cursor, hit <b>Enter</b>, and you're in that agent's pane. <strong>Jumping keeps the dashboard alive:</strong> inside tmux it <code>switch-client</code>s you to the agent but leaves the monitor running in its own pane, a persistent surface you can switch back to — not a one-shot chooser.</p>
+      </div>
+      <div class="keys" aria-label="dashboard keys">
+        <span class="key"><b>↑/↓</b> or <b>j/k</b> move</span>
+        <span class="key"><b>enter</b> jump</span>
+        <span class="key"><b>o</b> cycle target window</span>
+        <span class="key"><b>r</b> refresh</span>
+        <span class="key"><b>q</b> / <b>esc</b> quit</span>
+      </div>
+      <div class="prose">
+        <p style="margin-top:26px"><strong>The two-window setup</strong> is where it earns its keep. tmux is client-server: every attached terminal window is a separate client, and tend can move a specific one. Run the dashboard in window A, keep window B for actually working, press <b>o</b> once to aim at B — now every Enter opens the selected agent <em>over there</em> while the dashboard never moves.</p>
+      </div>
+      <div class="fig2" aria-label="Two-window workflow: dashboard in one window opens agents in another">
+        <div class="term">
+          <div class="term-bar" aria-hidden="true"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">window A — monitor</span></div>
+          <div class="term-body"><pre><span class="t-cur">tend</span>  <span class="t-dim">↑/↓ move · enter jump · o target</span>
+<span class="t-dim">opens in: ttys023 · scratch</span>
+
+<span class="t-sess">▸ api</span>  <span class="t-dim">(1)</span>  <span class="t-dim">·</span> <span class="t-red">1 blocked</span>
+<span class="row-sel"><span class="t-cur">❯</span> <span class="t-red">●</span> %1    claude    <span class="t-branch">feature/x</span> <span class="t-dirty">✱</span></span>
+<span class="t-sess">▸ web</span>  <span class="t-dim">(1)</span>
+  <span class="t-yel">⠧</span> %5    claude    <span class="t-branch">main</span></pre></div>
+        </div>
+        <div class="jump"><span class="arrow">⟶</span><span>enter</span></div>
+        <div class="term">
+          <div class="term-bar" aria-hidden="true"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">window B — work here</span></div>
+          <div class="term-body"><pre><span class="t-dim">╭──────────────────────────────╮</span>
+<span class="t-dim">│</span> Allow Bash command?          <span class="t-dim">│</span>
+<span class="t-dim">│</span> <span class="t-cur">❯ 1. Yes</span>                     <span class="t-dim">│</span>
+<span class="t-dim">│</span>   2. No                      <span class="t-dim">│</span>
+<span class="t-dim">╰──────────────────────────────╯</span>
+<span class="t-dim">agent %1 · you're unblocking it</span></pre></div>
+        </div>
+      </div>
+      <p class="fig2-caption">The other window must be an attached tmux client on the same server — check with <code style="font-family:var(--mono)">tend clients</code>.</p>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <p class="eyebrow">how it works</p>
+      <h2>Two signals, arbitrated. All data, no daemons.</h2>
+      <div class="prose">
+        <p><strong>Which agent is in a pane:</strong> tmux's <code>pane_current_command</code> gives the foreground process name. (Claude Code renames its process to its version string — e.g. <code>2.1.200</code> — so tend matches a semver pattern, not a literal name.) If the command is generic, it falls back to persistent screen chrome like the mode footer — never the welcome banner, which scrolls away.</p>
+        <p><strong>What state it's in:</strong> tend captures the rendered screen with <code>capture-pane</code> and runs declarative manifest rules against slices of it, then arbitrates against pane activity — in strict order:</p>
+      </div>
+      <div class="pipeline">
+        <div class="pipe-step">
+          <span class="g t-grey" style="color:var(--unknown)">⏸</span>
+          <div><h4>hold</h4><p>Scrollback, model-picker, and transcript screens are recognized and hold the previous state instead of authoring a bogus one.</p></div>
+        </div>
+        <div class="pipe-step">
+          <span class="g" style="color:var(--blocked)">●</span>
+          <div><h4>blocked <span class="pipe-label">— screen, strong</span></h4><p>A live approval UI wins immediately. It keys on the selection cursor (<code>❯ 1.</code>) that disappears the instant you answer — not the question text, which lingers in scrollback. Blocked is never inherited across scans, so a stale block can't persist.</p></div>
+        </div>
+        <div class="pipe-step">
+          <span class="g" style="color:var(--working)">⠧</span>
+          <div><h4>working <span class="pipe-label">— activity</span></h4><p>The pane's content changed since the last scan (snapshot diff). A visible "esc to interrupt" hint is a secondary signal.</p></div>
+        </div>
+        <div class="pipe-step">
+          <span class="g" style="color:var(--idle)">○</span>
+          <div><h4>idle <span class="pipe-label">— debounced</span></h4><p>Must persist across two scans before it's reported, so one quiet frame mid-task doesn't flap the status. Anything else keeps the previous state.</p></div>
+        </div>
+      </div>
+      <div class="prose">
+        <p style="margin-top:22px">Git facts come from shelling out to the real <code>git</code> binary, memoized per repo root within each scan — N panes in one repo cost one set of calls.</p>
+        <p><strong>Detection is data, not code.</strong> Each rule is <code class="wrapok">{ id, state, priority, region, contains?, regex?, not? }</code> in <a href="https://github.com/spadin/tend/blob/main/src/manifests.ts">src/manifests.ts</a>. Agent TUIs drift with versions, so the shipped Claude Code and Codex rules are a starting point you can tune — run <code>tend --debug &lt;pane&gt;</code> against a live agent and it shows exactly what each region extractor sees and which rules match. Adding a new agent means adding a manifest, not touching the engine.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="integrate">
+    <div class="wrap">
+      <p class="eyebrow">integration</p>
+      <h2>It composes with tmux, like everything should.</h2>
+      <div class="prose"><p>Put a summary in the status bar via <code>tend --json</code>, or bind a key to a popup dashboard:</p></div>
+      <pre class="shell"><span class="c"># count blocked agents in the status bar</span>
+set -g status-right "#(tend --json | jq -r '[.[] | select(.state==\"blocked\")] | length') blocked"
+
+<span class="c"># pop up the dashboard on prefix-g</span>
+bind-key g display-popup -E "tend; read"</pre>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><span class="glyphs"><span style="color:var(--blocked)">●</span><span style="color:var(--working)">⠧</span><span style="color:var(--idle)">○</span></span></p>
+    <p>MIT licensed · <a href="https://github.com/spadin/tend">github.com/spadin/tend</a> · zero runtime dependencies, including this page</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var el = document.getElementById('demo');
+  if (!el) return;
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var FRAMES = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+
+  // The board: sessions of agents, mirroring real tend output.
+  var agents = [
+    { sess: 'api',   id: '%1', tool: 'claude', branch: 'feature/auth', mark: '↑2 ✱', state: 'blocked' },
+    { sess: 'web',   id: '%5', tool: 'claude', branch: 'main',         mark: '',     state: 'working' },
+    { sess: 'web',   id: '%0', tool: 'codex',  branch: 'main',         mark: '✱',    state: 'idle'    },
+    { sess: 'infra', id: '%7', tool: 'claude', branch: 'fix/deploy',   mark: '✱',    state: 'working' }
+  ];
+  var cursor = 1;      // selected row index into agents
+  var tick = 0;
+
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function pad(s, n){ while (s.length < n) s += ' '; return s; }
+
+  function glyph(state) {
+    if (state === 'blocked') return '<span class="t-red">●</span>';
+    if (state === 'working') return '<span class="t-yel">' + FRAMES[tick % FRAMES.length] + '</span>';
+    if (state === 'idle')    return '<span class="t-grn">○</span>';
+    return '<span class="t-grey">◌</span>';
+  }
+
+  function render() {
+    var out = '<span class="t-cur">tend</span>  <span class="t-dim">↑/↓ move · enter jump · o target · r refresh · q quit</span>\n';
+    out += '<span class="t-dim">opens in: this window</span>\n\n';
+
+    var sessions = [];
+    agents.forEach(function (a) { if (sessions.indexOf(a.sess) < 0) sessions.push(a.sess); });
+
+    var counts = { blocked: 0, working: 0, idle: 0 };
+    agents.forEach(function (a) { counts[a.state]++; });
+
+    sessions.forEach(function (s) {
+      var rows = agents.filter(function (a) { return a.sess === s; });
+      var blocked = rows.filter(function (a) { return a.state === 'blocked'; }).length;
+      out += '<span class="t-sess">▸ ' + esc(s) + '</span>  <span class="t-dim">(' + rows.length + ')</span>';
+      if (blocked) out += '  <span class="t-dim">·</span> <span class="t-red">' + blocked + ' blocked</span>';
+      out += '\n';
+      rows.forEach(function (a) {
+        var i = agents.indexOf(a);
+        var sel = i === cursor;
+        var line = (sel ? '<span class="t-cur">❯</span> ' : '  ') + glyph(a.state) + ' ' +
+          pad(a.id, 6) + pad(a.tool, 10) +
+          '<span class="t-branch">' + esc(a.branch) + '</span>' +
+          (a.mark ? ' <span class="t-dirty">' + esc(a.mark) + '</span>' : '');
+        out += sel ? '<span class="row-sel">' + line + '</span>\n' : line + '\n';
+      });
+    });
+
+    out += '\n<span class="t-dim">' + agents.length + ' agents across ' + sessions.length +
+      ' sessions — </span><span class="t-red">' + counts.blocked + ' blocked</span><span class="t-dim">, </span>' +
+      '<span class="t-yel">' + counts.working + ' working</span><span class="t-dim">, </span>' +
+      '<span class="t-grn">' + counts.idle + ' idle</span>';
+
+    el.innerHTML = out;
+  }
+
+  render();
+  if (reduced) return; // static frame is the whole story
+
+  // Spinner ticks ~90ms, like the real dashboard.
+  setInterval(function () {
+    tick++;
+    if (agents.some(function (a) { return a.state === 'working'; })) render();
+  }, 90);
+
+  // A slow scripted "day in the life": states shift, cursor follows the action.
+  var script = [
+    function () { agents[3].state = 'idle'; },                    // infra finishes
+    function () { cursor = 0; },                                  // you select the blocked one
+    function () { agents[0].state = 'working'; },                 // …and unblock it
+    function () { agents[2].state = 'working'; },                 // codex picks up work
+    function () { agents[1].state = 'blocked'; cursor = 1; },     // web claude needs approval
+    function () { agents[1].state = 'working'; },                 // approved
+    function () { agents[0].state = 'idle'; agents[0].mark = '↑3'; },
+    function () { agents[3].state = 'working'; },
+    function () { agents[2].state = 'idle'; },
+    function () { agents[0].state = 'blocked'; cursor = 0; },     // back to the start shape
+    function () { agents[0].state = 'blocked'; agents[0].mark = '↑2 ✱';
+                  agents[1].state = 'working'; agents[2].state = 'idle';
+                  agents[3].state = 'working'; cursor = 1; }
+  ];
+  var step = 0;
+  setInterval(function () {
+    script[step % script.length]();
+    step++;
+    render();
+  }, 3200);
+})();
+</script>
+</body>
+</html>
