@@ -1,6 +1,6 @@
 {
   "name": "@sandropadin/tend",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Lightweight status detector for AI coding agents running inside tmux. Reports blocked / working / idle per pane by scraping the terminal, plus git branch state.",
   "type": "module",
   "bin": {
